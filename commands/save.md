@@ -33,7 +33,8 @@ subprocess.run(["git", "push"], check=True)
 commit_hash = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
 commit_short = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode().strip()
 branch = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"]).decode().strip()
-repo_url = subprocess.check_output(["git", "config", "--get", "remote.origin.url"], check=False).decode().strip() or "unknown"
+result = subprocess.run(["git", "config", "--get", "remote.origin.url"], capture_output=True, text=True)
+repo_url = result.stdout.strip() or "unknown"
 working_dir = subprocess.check_output(["pwd"]).decode().strip()
 
 print(f"✓ Code committed: {commit_short}")
