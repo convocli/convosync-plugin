@@ -239,19 +239,28 @@ Pulls the latest code and restores the conversation.
 1. `git pull` - Get latest code
 2. Get current commit hash
 3. Download session metadata for this commit
-4. Download linked conversation
-5. Restore conversation to Claude
-6. Verify everything matches
-7. Ready to continue!
+4. Download the saved conversation
+5. **Merge with your current conversation** (this is the magic!)
+6. All old messages now visible in current conversation
+7. Continue seamlessly!
 
 **Output:**
 ```
+🔄 ConvoSync: Resuming session...
 ✓ Code pulled: commit abc123
-✓ Conversation restored
-✓ Original: "implementing OAuth login"
-✓ Synced 5 minutes ago
-✓ Ready to continue!
+✓ Found session: "implementing OAuth login"
+✓ Downloaded (2.1MB)
+✓ Merged: 850 old + 5 current = 855 total
+✅ Session restored successfully!
 ```
+
+**The Magic: Conversation Merging**
+
+Instead of trying to "switch" conversations, `/resume` **merges** the old conversation into your current one:
+- Old messages are prepended (chronological order)
+- Session IDs are unified
+- Parent UUID chain is linked
+- **Result:** Full conversation history visible in one place!
 
 ---
 
