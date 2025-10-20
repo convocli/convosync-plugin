@@ -4,11 +4,11 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude-Code-blue.svg)](https://claude.ai/code)
-[![Version](https://img.shields.io/badge/version-0.1.1-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.2.0-brightgreen.svg)](CHANGELOG.md)
 
 > Part of the [ConvoCLI](https://github.com/convocli/convocli) ecosystem
 
-> **📌 Latest Update (v0.1.1):** Critical fixes for conversation merge and save crashes. [See CHANGELOG](CHANGELOG.md) for details.
+> **🎉 Latest Update (v0.2.0):** Context display feature - conversation history now ACTUALLY accessible after resume! No restart needed. [See CHANGELOG](CHANGELOG.md) for details.
 
 ---
 
@@ -243,9 +243,9 @@ Pulls the latest code and restores the conversation.
 2. Get current commit hash
 3. Download session metadata for this commit
 4. Download the saved conversation
-5. **Merge with your current conversation** (this is the magic!)
-6. All old messages now visible in current conversation
-7. Continue seamlessly!
+5. **Display conversation history in current session** (so Claude can see it!)
+6. **Also merge files on disk** (for future reference)
+7. Continue seamlessly with full context!
 
 **Output:**
 ```
@@ -254,16 +254,57 @@ Pulls the latest code and restores the conversation.
 ✓ Found session: "implementing OAuth login"
 ✓ Downloaded (2.1MB)
 ✓ Merged: 850 old + 5 current = 855 total
+
+======================================================================
+📝 RESTORED CONVERSATION CONTEXT
+======================================================================
+
+Session: "implementing OAuth login"
+Messages: 850 restored from cloud
+Timestamp: 2025-10-20 12:30
+
+RECENT CONVERSATION HISTORY (last 30 messages):
+----------------------------------------------------------------------
+
+[1] USER:
+    Let's add refresh token logic
+
+[2] ASSISTANT:
+    I'll implement refresh tokens...
+
+...
+
+[25] USER:
+    By the way, my favorite pizza is Margherita
+
+[26] ASSISTANT:
+    Good to know! Margherita is a classic...
+
+...
+
+======================================================================
+✅ Context restored! I can now reference the conversation above.
+======================================================================
+
 ✅ Session restored successfully!
 ```
 
-**The Magic: Conversation Merging**
+**The Magic: Context Display + File Merge (v0.2.0)**
 
-Instead of trying to "switch" conversations, `/resume` **merges** the old conversation into your current one:
-- Old messages are prepended (chronological order)
-- Session IDs are unified
-- Parent UUID chain is linked
-- **Result:** Full conversation history visible in one place!
+Instead of just merging files on disk (which Claude can't access), `/resume` now uses a **hybrid approach**:
+
+1. **Displays conversation in current session**
+   - Shows last 30 messages as formatted output
+   - Claude sees the history and can reference it immediately
+   - No restart needed!
+
+2. **Also merges conversation files**
+   - Old messages + current messages merged on disk
+   - Session IDs unified
+   - Parent UUID chain linked
+   - Ready for future sessions
+
+**Result:** You get immediate context (from display) AND persistent record (from file merge)!
 
 ---
 

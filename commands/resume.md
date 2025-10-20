@@ -133,9 +133,54 @@ else:
 
         print(f"✓ Merged: {len(old_messages)} old + {len(new_messages)} current = {len(merged)} total")
 
+# Display context in current conversation so Claude can access it
 print()
-print("✅ Session restored successfully!")
+print("=" * 70)
+print("📝 RESTORED CONVERSATION CONTEXT")
+print("=" * 70)
 print()
+print(f"Session: \"{orig_msg}\"")
+print(f"Messages: {len(old_messages)} restored from cloud")
+print(f"Timestamp: {datetime.fromtimestamp(metadata['timestamp']).strftime('%Y-%m-%d %H:%M')}")
+print()
+print("RECENT CONVERSATION HISTORY (last 30 messages):")
+print("-" * 70)
+
+# Display last 30 messages from old conversation
+for i, msg in enumerate(old_messages[-30:], 1):
+    role = msg.get('role', 'unknown')
+    content_obj = msg.get('content', {})
+
+    # Handle different content formats
+    if isinstance(content_obj, dict):
+        text = content_obj.get('text', '')
+    elif isinstance(content_obj, str):
+        text = content_obj
+    else:
+        text = str(content_obj)
+
+    # Truncate very long messages for readability
+    if len(text) > 300:
+        text = text[:297] + "..."
+
+    # Skip empty messages
+    if not text.strip():
+        continue
+
+    # Display message
+    print(f"\n[{i}] {role.upper()}:")
+    for line in text.split('\n')[:5]:  # Max 5 lines per message
+        print(f"    {line}")
+    if text.count('\n') > 5:
+        print("    ... (more lines)")
+
+print()
+print("=" * 70)
+print("✅ Context restored! I can now reference the conversation above.")
+print("=" * 70)
+print()
+
+print("Session Info:")
 print(f"  Original: \"{orig_msg}\"")
 print(f"  Commit: {commit_short}")
 print(f"  Branch: {branch}")

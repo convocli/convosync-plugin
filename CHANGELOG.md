@@ -2,6 +2,102 @@
 
 All notable changes to ConvoSync Plugin will be documented in this file.
 
+## [0.2.0] - 2025-10-20
+
+### Added
+
+#### Context Display in Resume Command (MAJOR FEATURE)
+**The game-changing feature that makes cross-device conversation continuation actually work!**
+
+**Problem Solved:** In v0.1.1, the resume command successfully merged conversation files on disk, but Claude couldn't access them because:
+- Conversation context lives in RAM, not on disk
+- No API to reload conversation mid-session
+- File changes don't affect active Claude context
+- User had to manually restart Claude Code (poor UX)
+
+**Solution:** Display the old conversation IN the current conversation so Claude can see it immediately.
+
+**What's New:**
+- `/convosync:resume` now displays the last 30 messages from the restored conversation
+- Messages appear as formatted output in the current session
+- Claude can read and reference the conversation history
+- No restart required - context available immediately!
+
+**User Experience:**
+
+Before (v0.1.1):
+```
+/resume
+✓ Merged: 809 old + 521 current = 1330 messages
+✓ Session restored!
+
+User: "What is my favorite pizza?"
+Claude: "I don't know" ❌  (context in file, not in RAM)
+```
+
+After (v0.2.0):
+```
+/resume
+✓ Merged: 809 old + 521 current = 1330 messages
+
+======================================================================
+📝 RESTORED CONVERSATION CONTEXT
+======================================================================
+
+Session: "implementing OAuth login"
+Messages: 809 restored from cloud
+Timestamp: 2025-10-20 12:30
+
+RECENT CONVERSATION HISTORY (last 30 messages):
+----------------------------------------------------------------------
+
+[1] USER:
+    Let's add refresh token logic
+
+...
+
+[15] USER:
+    By the way, my favorite pizza is Margherita
+
+[16] ASSISTANT:
+    Good to know! Margherita is a classic choice...
+
+...
+
+======================================================================
+✅ Context restored! I can now reference the conversation above.
+======================================================================
+
+User: "What is my favorite pizza?"
+Claude: "Your favorite pizza is Margherita! I can see from
+        message [15] in the restored context above." ✅
+```
+
+**Technical Details:**
+- Hybrid approach: Displays context + maintains file merge
+- Shows last 30 messages (configurable)
+- Truncates long messages for readability (300 char limit)
+- Skips empty messages
+- Preserves message roles (USER/ASSISTANT)
+- Formatted for easy reading
+
+**Impact:**
+- ✅ Cross-device workflow actually works now!
+- ✅ No manual restart needed
+- ✅ Context immediately accessible
+- ✅ Automated single-command operation
+- ✅ Supports high-frequency device switching
+- ✅ Perfect for desktop ↔ mobile workflows
+
+**Requirements Met:**
+- Automated: Single `/resume` command ✅
+- Bidirectional: Works both ways ✅
+- Preserves code + conversation ✅
+- Fast and reliable ✅
+- No manual steps ✅
+
+This is the feature that makes ConvoSync fulfill its original promise!
+
 ## [0.1.1] - 2025-10-20
 
 ### Fixed
