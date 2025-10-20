@@ -8,12 +8,8 @@
   "plugins": [
     {
       "name": "convosync",
-      "source": ".",
-      "description": "Sync your coding sessions across devices with atomic code + conversation sync",
-      "version": "0.1.0",
-      "category": "productivity",
-      "tags": ["sync", "cross-device", "mobile", "git", "cloud-storage"],
-      "featured": true
+      "source": "./",
+      "description": "Sync your coding sessions across devices with atomic code + conversation sync"
     }
   ]
 }
