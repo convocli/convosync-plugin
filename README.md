@@ -4,8 +4,11 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude-Code-blue.svg)](https://claude.ai/code)
+[![Version](https://img.shields.io/badge/version-0.1.1-blue.svg)](CHANGELOG.md)
 
 > Part of the [ConvoCLI](https://github.com/convocli/convocli) ecosystem
+
+> **📌 Latest Update (v0.1.1):** Critical fixes for conversation merge and save crashes. [See CHANGELOG](CHANGELOG.md) for details.
 
 ---
 

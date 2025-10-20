@@ -10,15 +10,6 @@ Restore a synced coding session and **merge it into the current conversation**.
 **Execute the resume process:**
 
 ```bash
-# Get the plugin scripts directory
-PLUGIN_DIR="$HOME/storage/code-projects/convosync-plugin"
-
-# If plugin was installed via /plugin, find it
-if [ ! -d "$PLUGIN_DIR" ]; then
-    PLUGIN_DIR="$HOME/.claude/plugins/marketplaces/convocli-marketplace"
-fi
-
-# Run the enhanced resume script
 python3 << 'RESUME_SCRIPT'
 import json
 import subprocess
