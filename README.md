@@ -76,9 +76,27 @@ $ claude-code
 1. **Claude Code** installed ([download](https://claude.ai/code))
 2. **Git** repository
 3. **Cloud storage** (Google Drive, Dropbox, etc.)
-4. **rclone** ([install guide](#rclone-setup))
+4. **rclone** ([install guide](#setup))
 
-### Quick Install
+### Option 1: Plugin Command (Recommended)
+
+**Easiest way** - Install directly from Claude Code:
+
+```bash
+# In Claude Code
+/plugin marketplace add convocli/convosync-plugin
+
+# Then browse and install
+/plugin
+
+# Select "Browse Plugins" → "convosync" → "Install"
+```
+
+That's it! The `/save` and `/resume` commands are now available.
+
+**Note:** You still need to [configure rclone](#setup) for cloud storage after installing the plugin.
+
+### Option 2: Automated Install Script
 
 ```bash
 # Clone this repo
@@ -94,7 +112,7 @@ cd convosync-plugin
 # 3. Install commands
 ```
 
-### Manual Install
+### Option 3: Manual Install
 
 ```bash
 # Copy commands to your project

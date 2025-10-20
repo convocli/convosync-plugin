@@ -1,0 +1,19 @@
+{
+  "name": "convocli-marketplace",
+  "description": "ConvoCLI ecosystem plugins for coding anywhere, anytime",
+  "owner": {
+    "name": "ConvoCLI",
+    "url": "https://github.com/convocli"
+  },
+  "plugins": [
+    {
+      "name": "convosync",
+      "source": ".",
+      "description": "Sync your coding sessions across devices with atomic code + conversation sync",
+      "version": "0.1.0",
+      "category": "productivity",
+      "tags": ["sync", "cross-device", "mobile", "git", "cloud-storage"],
+      "featured": true
+    }
+  ]
+}
