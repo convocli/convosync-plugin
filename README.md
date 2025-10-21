@@ -4,11 +4,11 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude-Code-blue.svg)](https://claude.ai/code)
-[![Version](https://img.shields.io/badge/version-0.2.0-brightgreen.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.2.1-brightgreen.svg)](CHANGELOG.md)
 
 > Part of the [ConvoCLI](https://github.com/convocli/convocli) ecosystem
 
-> **🎉 Latest Update (v0.2.0):** Context display feature - conversation history now ACTUALLY accessible after resume! No restart needed. [See CHANGELOG](CHANGELOG.md) for details.
+> **🔧 Latest Update (v0.2.1):** Critical bugfix - context display now parses messages correctly! Previous version showed empty output. [See CHANGELOG](CHANGELOG.md) for details.
 
 ---
 

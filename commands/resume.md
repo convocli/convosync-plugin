@@ -147,28 +147,45 @@ print("RECENT CONVERSATION HISTORY (last 30 messages):")
 print("-" * 70)
 
 # Display last 30 messages from old conversation
-for i, msg in enumerate(old_messages[-30:], 1):
-    role = msg.get('role', 'unknown')
-    content_obj = msg.get('content', {})
+displayed_count = 0
+for msg in old_messages[-30:]:
+    # Get message type and nested message object
+    msg_type = msg.get('type', 'unknown')
+    message_obj = msg.get('message', {})
 
-    # Handle different content formats
-    if isinstance(content_obj, dict):
-        text = content_obj.get('text', '')
-    elif isinstance(content_obj, str):
-        text = content_obj
+    # Skip file-history-snapshot and other non-message types
+    if msg_type not in ['user', 'assistant']:
+        continue
+
+    role = message_obj.get('role', 'unknown')
+    content = message_obj.get('content', '')
+
+    # Extract text based on content format
+    if isinstance(content, str):
+        # User messages: content is a string
+        text = content
+    elif isinstance(content, list):
+        # Assistant messages: content is array of blocks
+        text_parts = []
+        for block in content:
+            if isinstance(block, dict) and block.get('type') == 'text':
+                text_parts.append(block.get('text', ''))
+        text = '\n'.join(text_parts)
     else:
-        text = str(content_obj)
-
-    # Truncate very long messages for readability
-    if len(text) > 300:
-        text = text[:297] + "..."
+        text = str(content)
 
     # Skip empty messages
     if not text.strip():
         continue
 
+    displayed_count += 1
+
+    # Truncate very long messages for readability
+    if len(text) > 300:
+        text = text[:297] + "..."
+
     # Display message
-    print(f"\n[{i}] {role.upper()}:")
+    print(f"\n[{displayed_count}] {role.upper()}:")
     for line in text.split('\n')[:5]:  # Max 5 lines per message
         print(f"    {line}")
     if text.count('\n') > 5:
