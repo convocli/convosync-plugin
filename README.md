@@ -1,5 +1,21 @@
 # ConvoSync Plugin for Claude Code
 
+> **⚠️ DEVELOPMENT PAUSED - PROJECT NOT WORKING YET**
+>
+> **Status:** With the recent launch of **Claude Code Web** (web interface for Claude Code with direct GitHub integration), this project's development is **on hold** pending evaluation of Claude Code Web's native conversation sync capabilities.
+>
+> **Why paused:**
+> - Claude Code Web may provide native cross-device conversation sync
+> - This could make ConvoSync redundant
+> - Waiting to see what Claude Code Web offers before continuing development
+>
+> **Current state:**
+> - Code sync: ✅ Works (via git)
+> - Conversation sync: ❌ **Not working** (context display has parsing issues)
+> - Not recommended for production use
+>
+> **For developers/contributors:** See [CHANGELOG.md](CHANGELOG.md) for technical details on what was attempted (v0.1.1 file merge, v0.2.0 context display, v0.2.1 parsing fix) and why it's still not fully functional.
+
 **Sync your coding sessions across devices - continue exactly where you left off**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
