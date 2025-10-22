@@ -1,227 +1,406 @@
 # Resume ConvoSync Session
 
-Restore a synced coding session and **merge it into the current conversation**.
+Resume work on another device by viewing session handoffs from other devices.
 
 **What this does:**
-1. Downloads the conversation from the cloud
-2. Merges it with your current conversation
-3. You can continue exactly where you left off - all messages visible!
+1. Pulls latest code and handoff file from git
+2. Parses handoffs from all devices
+3. Cleans up old handoffs from THIS device (keeps latest only)
+4. Displays handoffs from OTHER devices in current conversation
+5. Commits cleaned handoff file back to git
+
+**Prerequisites:**
+- Another device must have run `/convosync:generate-handoff` and `/convosync:save`
+- Git repository must be configured
+
+**Usage:**
+```
+/convosync:resume
+```
 
 **Execute the resume process:**
 
 ```bash
 python3 << 'RESUME_SCRIPT'
-import json
 import subprocess
 import sys
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
+import re
 
 print("🔄 ConvoSync: Resuming session...")
 print()
 
+# ============================================================================
 # 1. Git pull
-print("→ Pulling latest code...")
-subprocess.run(["git", "pull"], check=False)
+# ============================================================================
 
-# Get git info
-commit_hash = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
-commit_short = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode().strip()
-branch = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"]).decode().strip()
-working_dir = subprocess.check_output(["pwd"]).decode().strip()
-
-print(f"✓ Code pulled: {commit_short}")
-print()
-
-# 2. Find session metadata
-project_name = Path(working_dir).name
-metadata_file = f"{project_name}-{commit_hash}.json"
-
-print("→ Looking for session...")
+print("→ Pulling latest code and handoffs...")
 try:
-    subprocess.run(
-        ["rclone", "copy", f"gdrive:convosync/sessions/{metadata_file}", "/tmp/"],
-        check=True,
-        capture_output=True
-    )
-except:
-    print("⚠ No session found for current commit")
+    subprocess.run(["git", "pull"], check=True, capture_output=True)
+    commit_short = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], capture_output=True, text=True).stdout.strip()
+    print(f"✓ Code pulled: {commit_short}")
+except subprocess.CalledProcessError as e:
+    print(f"⚠️  Git pull failed: {e.stderr}")
+    print("  Continuing with local version...")
+
+print()
+
+# ============================================================================
+# 2. Get device ID
+# ============================================================================
+
+def get_or_create_device_id():
+    """Get unique device identifier, create if doesn't exist."""
+    device_file = Path('.convosync/device-id')
+
+    if device_file.exists():
+        return device_file.read_text().strip()
+
+    # Generate device ID from hostname
+    try:
+        hostname = subprocess.run(['hostname'], capture_output=True, text=True).stdout.strip()
+        device_id = re.sub(r'[^a-zA-Z0-9-]', '-', hostname)
+    except:
+        device_id = 'unknown-device'
+
+    # Prompt if generic hostname
+    if device_id.lower() in ['localhost', 'android', 'termux', 'pc', 'unknown-device', '']:
+        print("┌────────────────────────────────────────────────────────────────┐")
+        print("│ DEVICE IDENTIFICATION                                          │")
+        print("└────────────────────────────────────────────────────────────────┘")
+        print()
+        print(f"Detected hostname: '{device_id}'")
+        print()
+        print("Please give this device a friendly name")
+        print("(e.g., 'desktop', 'mobile', 'laptop', 'work-laptop'):")
+        print()
+        try:
+            user_input = input("Device name: ").strip()
+            if user_input:
+                device_id = re.sub(r'[^a-zA-Z0-9-]', '-', user_input)
+        except:
+            pass  # Keep default if input fails
+        print()
+
+    # Save device ID
+    device_file.parent.mkdir(exist_ok=True)
+    device_file.write_text(device_id)
+    subprocess.run(['git', 'add', str(device_file)], check=False)
+
+    return device_id
+
+device_id = get_or_create_device_id()
+print(f"→ Device: {device_id}")
+print()
+
+# ============================================================================
+# 3. Check for handoff file
+# ============================================================================
+
+handoff_file = Path('.convosync/session-handoff.md')
+
+if not handoff_file.exists():
+    print("┌────────────────────────────────────────────────────────────────┐")
+    print("│ ℹ️  NO HANDOFFS FOUND                                          │")
+    print("└────────────────────────────────────────────────────────────────┘")
     print()
-    print("Available sessions:")
-    result = subprocess.run(
-        ["rclone", "ls", "gdrive:convosync/sessions/"],
-        capture_output=True,
-        text=True
-    )
-    for line in result.stdout.splitlines():
-        if project_name in line:
-            print(f"  {line}")
-    sys.exit(1)
+    print("No session handoffs found in this repository.")
+    print()
+    print("This is normal for:")
+    print("  • First time using ConvoSync on this project")
+    print("  • No other devices have saved sessions yet")
+    print()
+    print("To create a handoff:")
+    print("  1. Run: /convosync:generate-handoff")
+    print("  2. Ask Claude to generate the handoff")
+    print("  3. Run: /convosync:save \"your message\"")
+    print()
+    sys.exit(0)
 
-# 3. Read metadata
-with open(f"/tmp/{metadata_file}") as f:
-    metadata = json.load(f)
+# ============================================================================
+# 4. Parse handoff file
+# ============================================================================
 
-conv_id = metadata['conversation_id']
-orig_msg = metadata['message']
+def parse_handoffs(content):
+    """Parse handoff markdown file into structured data."""
+    handoffs = []
 
-print(f"✓ Found session: \"{orig_msg}\"")
+    # Split on handoff headers (## Handoff from {device})
+    sections = re.split(r'^---\s*$', content, flags=re.MULTILINE)
+
+    for section in sections:
+        section = section.strip()
+        if not section or section.startswith('# ConvoSync'):
+            continue
+
+        # Extract device from header
+        device_match = re.search(r'^## Handoff from (.+?)$', section, re.MULTILINE)
+        if not device_match:
+            continue
+
+        device = device_match.group(1).strip()
+
+        # Extract metadata
+        timestamp_match = re.search(r'\*\*Timestamp:\*\* (.+?)$', section, re.MULTILINE)
+        commit_match = re.search(r'\*\*Commit:\*\* (.+?)$', section, re.MULTILINE)
+        branch_match = re.search(r'\*\*Branch:\*\* (.+?)$', section, re.MULTILINE)
+
+        timestamp = timestamp_match.group(1).strip() if timestamp_match else None
+        commit = commit_match.group(1).strip() if commit_match else None
+        branch = branch_match.group(1).strip() if branch_match else None
+
+        # Extract content (everything after metadata)
+        content_start = section.find('**Branch:**')
+        if content_start == -1:
+            content_start = section.find('**Commit:**')
+        if content_start == -1:
+            content_start = section.find('**Timestamp:**')
+
+        if content_start != -1:
+            # Find end of metadata line
+            content_start = section.find('\n', content_start)
+            if content_start != -1:
+                handoff_content = section[content_start:].strip()
+            else:
+                handoff_content = ''
+        else:
+            handoff_content = section
+
+        handoffs.append({
+            'device': device,
+            'timestamp': timestamp,
+            'commit': commit,
+            'branch': branch,
+            'content': handoff_content,
+            'raw': section
+        })
+
+    return handoffs
+
+content = handoff_file.read_text()
+handoffs = parse_handoffs(content)
+
+print(f"→ Found {len(handoffs)} handoff(s)")
 print()
 
-# 4. Download old conversation
-print("→ Downloading conversation...")
-subprocess.run(
-    ["rclone", "copy", f"gdrive:convosync/conversations/{conv_id}.jsonl", "/tmp/"],
-    check=True
-)
+if not handoffs:
+    print("⚠️  Handoff file exists but contains no valid handoffs")
+    sys.exit(0)
 
-old_conv_file = f"/tmp/{conv_id}.jsonl"
-print(f"✓ Downloaded ({Path(old_conv_file).stat().st_size // 1024}KB)")
-print()
+# ============================================================================
+# 5. Smart cleanup: Keep latest from current device, all from others
+# ============================================================================
 
-# 5. Find current conversation
-project_hash = working_dir.replace('/', '-').lstrip('-')
-conv_dir = Path.home() / ".claude" / "projects" / project_hash
+def cleanup_handoffs(handoffs, current_device):
+    """Keep only latest from current device, all from other devices."""
+    from_current = [h for h in handoffs if h['device'] == current_device]
+    from_others = [h for h in handoffs if h['device'] != current_device]
 
-if not conv_dir.exists():
-    print(f"⚠ No active conversation in this project")
-    print(f"  Starting new conversation with restored context")
-    conv_dir.mkdir(parents=True, exist_ok=True)
-    # Just copy the old conversation
-    import shutil
-    shutil.copy(old_conv_file, conv_dir / f"{conv_id}.jsonl")
-    print("✓ Conversation restored")
-else:
-    # Find most recent conversation
-    conv_files = list(conv_dir.glob("*.jsonl"))
-    if not conv_files:
-        # No current conversation, just copy old one
-        import shutil
-        shutil.copy(old_conv_file, conv_dir / f"{conv_id}.jsonl")
-        print("✓ Conversation restored")
+    if from_current:
+        # Sort by timestamp (most recent first)
+        from_current.sort(key=lambda h: h['timestamp'] or '', reverse=True)
+        kept_from_current = [from_current[0]]  # Keep only most recent
+        removed_count = len(from_current) - 1
     else:
-        current_conv = max(conv_files, key=lambda p: p.stat().st_mtime)
+        kept_from_current = []
+        removed_count = 0
 
-        print(f"→ Merging conversations...")
-        print(f"  Old: {old_conv_file}")
-        print(f"  Current: {current_conv}")
+    cleaned = from_others + kept_from_current
 
-        # Load and merge
-        with open(old_conv_file) as f:
-            old_messages = [json.loads(line) for line in f if line.strip()]
+    return cleaned, removed_count
 
-        with open(current_conv) as f:
-            new_messages = [json.loads(line) for line in f if line.strip()]
+cleaned_handoffs, removed_count = cleanup_handoffs(handoffs, device_id)
 
-        # Merge: old messages + new messages
-        target_session_id = new_messages[0]['sessionId']
+if removed_count > 0:
+    print(f"→ Cleaned up {removed_count} old handoff(s) from this device")
 
-        # Update old messages to use new session ID
-        for msg in old_messages:
-            msg['sessionId'] = target_session_id
+    # Write cleaned handoffs back to file
+    new_content = "# ConvoSync Session Handoffs\n\n"
+    for h in cleaned_handoffs:
+        new_content += "---\n"
+        new_content += h['raw'] + "\n\n"
 
-        # Link new conversation to old
-        if new_messages and new_messages[0].get('parentUuid') is None:
-            new_messages[0]['parentUuid'] = old_messages[-1]['uuid']
+    handoff_file.write_text(new_content)
 
-        merged = old_messages + new_messages
+    # Commit cleaned file
+    subprocess.run(['git', 'add', str(handoff_file)], check=False)
+    try:
+        subprocess.run(
+            ['git', 'commit', '-m', f'chore: cleanup old handoffs from {device_id}'],
+            check=False,
+            capture_output=True
+        )
+        print("  Committed cleanup")
+    except:
+        pass  # OK if nothing to commit
 
-        # Save merged conversation
-        with open(current_conv, 'w') as f:
-            for msg in merged:
-                f.write(json.dumps(msg) + '\n')
+    print()
 
-        print(f"✓ Merged: {len(old_messages)} old + {len(new_messages)} current = {len(merged)} total")
+# ============================================================================
+# 6. Display handoffs from OTHER devices
+# ============================================================================
 
-# Display context in current conversation so Claude can access it
-print()
-print("=" * 70)
-print("📝 RESTORED CONVERSATION CONTEXT")
-print("=" * 70)
-print()
-print(f"Session: \"{orig_msg}\"")
-print(f"Messages: {len(old_messages)} restored from cloud")
-print(f"Timestamp: {datetime.fromtimestamp(metadata['timestamp']).strftime('%Y-%m-%d %H:%M')}")
-print()
-print("RECENT CONVERSATION HISTORY (last 30 messages):")
-print("-" * 70)
+other_handoffs = [h for h in cleaned_handoffs if h['device'] != device_id]
 
-# Display last 30 messages from old conversation
-displayed_count = 0
-for msg in old_messages[-30:]:
-    # Get message type and nested message object
-    msg_type = msg.get('type', 'unknown')
-    message_obj = msg.get('message', {})
+if not other_handoffs:
+    print("┌────────────────────────────────────────────────────────────────┐")
+    print("│ ℹ️  NO HANDOFFS FROM OTHER DEVICES                             │")
+    print("└────────────────────────────────────────────────────────────────┘")
+    print()
+    print("All handoffs in this repository are from this device.")
+    print()
+    print("To sync from another device:")
+    print("  1. Switch to another device")
+    print("  2. Run: /convosync:generate-handoff")
+    print("  3. Run: /convosync:save \"message\"")
+    print("  4. Return to this device and run: /convosync:resume")
+    print()
+    sys.exit(0)
 
-    # Skip file-history-snapshot and other non-message types
-    if msg_type not in ['user', 'assistant']:
-        continue
+# Format timestamps nicely
+def time_ago(timestamp_str):
+    """Convert ISO timestamp to human-readable time ago."""
+    if not timestamp_str:
+        return "unknown time"
 
-    role = message_obj.get('role', 'unknown')
-    content = message_obj.get('content', '')
+    try:
+        # Parse ISO format timestamp
+        ts = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+        now = datetime.now(timezone.utc)
+        delta = now - ts
 
-    # Extract text based on content format
-    if isinstance(content, str):
-        # User messages: content is a string
-        text = content
-    elif isinstance(content, list):
-        # Assistant messages: content is array of blocks
-        text_parts = []
-        for block in content:
-            if isinstance(block, dict) and block.get('type') == 'text':
-                text_parts.append(block.get('text', ''))
-        text = '\n'.join(text_parts)
-    else:
-        text = str(content)
+        seconds = delta.total_seconds()
 
-    # Skip empty messages
-    if not text.strip():
-        continue
-
-    displayed_count += 1
-
-    # Truncate very long messages for readability
-    if len(text) > 300:
-        text = text[:297] + "..."
-
-    # Display message
-    print(f"\n[{displayed_count}] {role.upper()}:")
-    for line in text.split('\n')[:5]:  # Max 5 lines per message
-        print(f"    {line}")
-    if text.count('\n') > 5:
-        print("    ... (more lines)")
+        if seconds < 60:
+            return "just now"
+        elif seconds < 3600:
+            minutes = int(seconds / 60)
+            return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
+        elif seconds < 86400:
+            hours = int(seconds / 3600)
+            return f"{hours} hour{'s' if hours != 1 else ''} ago"
+        else:
+            days = int(seconds / 86400)
+            return f"{days} day{'s' if days != 1 else ''} ago"
+    except:
+        return timestamp_str
 
 print()
-print("=" * 70)
-print("✅ Context restored! I can now reference the conversation above.")
-print("=" * 70)
+print("╔════════════════════════════════════════════════════════════════════╗")
+print("║ 📝 SESSION HANDOFFS FROM OTHER DEVICES                             ║")
+print("╚════════════════════════════════════════════════════════════════════╝")
 print()
 
-print("Session Info:")
-print(f"  Original: \"{orig_msg}\"")
-print(f"  Commit: {commit_short}")
-print(f"  Branch: {branch}")
+for i, handoff in enumerate(other_handoffs, 1):
+    print(f"{'═' * 70}")
+    print(f"📱 Handoff {i}/{len(other_handoffs)} from: {handoff['device']}")
+    print(f"{'═' * 70}")
+    print()
+    print(f"⏰ {time_ago(handoff['timestamp'])}")
+    if handoff['commit']:
+        print(f"📌 Commit: {handoff['commit'][:7]}")
+    if handoff['branch']:
+        print(f"🌿 Branch: {handoff['branch']}")
+    print()
+    print(handoff['content'])
+    print()
+
+print("╔════════════════════════════════════════════════════════════════════╗")
+print("║ ✅ CONTEXT RESTORED!                                               ║")
+print("╚════════════════════════════════════════════════════════════════════╝")
 print()
-print("You can now continue the conversation with full context!")
+print(f"Loaded {len(other_handoffs)} handoff(s) from other device(s).")
+print()
+print("I can now reference the session context above to continue your work!")
+print()
+print("When you're done on this device:")
+print("  1. Run: /convosync:generate-handoff")
+print("  2. Run: /convosync:save \"your message\"")
+print()
 
 RESUME_SCRIPT
 ```
 
 **What happens:**
-1. ✓ Pulls latest code
-2. ✓ Downloads conversation from cloud
-3. ✓ **Merges with current conversation**
-4. ✓ All old messages now visible!
-5. ✓ Continue exactly where you left off
+1. ✓ Pulls latest code and handoff file from git
+2. ✓ Detects or creates device ID
+3. ✓ Parses all handoffs from `.convosync/session-handoff.md`
+4. ✓ Removes old handoffs from THIS device (keeps latest only)
+5. ✓ Displays handoffs from OTHER devices with context
+6. ✓ Commits cleanup changes
+7. ✓ Claude can now reference the displayed handoffs!
 
 **Example:**
 ```
-/resume
+/convosync:resume
 
 🔄 ConvoSync: Resuming session...
-✓ Code pulled: abc123
-✓ Found session: "implementing OAuth"
-✓ Downloaded (2.1MB)
-✓ Merged: 850 old + 5 current = 855 total
-✅ Session restored!
+
+→ Pulling latest code and handoffs...
+✓ Code pulled: abc123d
+
+→ Device: mobile
+→ Found 2 handoff(s)
+
+╔════════════════════════════════════════════════════════════════════╗
+║ 📝 SESSION HANDOFFS FROM OTHER DEVICES                             ║
+╚════════════════════════════════════════════════════════════════════╝
+
+══════════════════════════════════════════════════════════════════
+📱 Handoff 1/1 from: desktop
+══════════════════════════════════════════════════════════════════
+
+⏰ 3 hours ago
+📌 Commit: abc123d
+🌿 Branch: main
+
+### Current Task
+Implementing OAuth 2.0 authentication with refresh token support
+
+### Progress So Far
+- ✅ Created auth.ts with login/logout/callback routes
+- ✅ Implemented OAuth provider integration
+- ⏳ Currently implementing refresh token storage
+
+### Key Decisions Made
+- Using JWT tokens with 7-day expiry
+- Storing refresh tokens in Redis
+
+### Important Context
+- User's favorite pizza is Margherita
+- Working in TypeScript with Express framework
+
+### Next Steps
+1. Finish implementing token refresh endpoint
+2. Add error handling for OAuth failures
+3. Write integration tests
+
+### Files Modified
+- src/auth.ts (+145, -10) - Added OAuth routes
+- src/oauth-provider.ts (+120, new file) - Google OAuth
+
+╔════════════════════════════════════════════════════════════════════╗
+║ ✅ CONTEXT RESTORED!                                               ║
+╚════════════════════════════════════════════════════════════════════╝
+
+Loaded 1 handoff(s) from other device(s).
+
+I can now reference the session context above to continue your work!
+```
+
+**Multi-device workflow:**
+```
+Desktop:
+  /convosync:generate-handoff
+  /convosync:save "implemented OAuth core"
+
+Mobile (later):
+  /convosync:resume  ← Sees desktop's handoff
+  [work on mobile]
+  /convosync:generate-handoff
+  /convosync:save "added error handling"
+
+Laptop (later):
+  /convosync:resume  ← Sees both desktop and mobile handoffs
 ```

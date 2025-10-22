@@ -1,36 +1,20 @@
 # ConvoSync Plugin for Claude Code
 
-> **⚠️ DEVELOPMENT PAUSED - PROJECT NOT WORKING YET**
->
-> **Status:** With the recent launch of **Claude Code Web** (web interface for Claude Code with direct GitHub integration), this project's development is **on hold** pending evaluation of Claude Code Web's native conversation sync capabilities.
->
-> **Why paused:**
-> - Claude Code Web may provide native cross-device conversation sync
-> - This could make ConvoSync redundant
-> - Waiting to see what Claude Code Web offers before continuing development
->
-> **Current state:**
-> - Code sync: ✅ Works (via git)
-> - Conversation sync: ❌ **Not working** (context display has parsing issues)
-> - Not recommended for production use
->
-> **For developers/contributors:** See [CHANGELOG.md](CHANGELOG.md) for technical details on what was attempted (v0.1.1 file merge, v0.2.0 context display, v0.2.1 parsing fix) and why it's still not fully functional.
-
-**Sync your coding sessions across devices - continue exactly where you left off**
+**Sync your coding sessions across devices with AI-generated session handoffs**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude-Code-blue.svg)](https://claude.ai/code)
-[![Version](https://img.shields.io/badge/version-0.2.1-brightgreen.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.0.0-brightgreen.svg)](CHANGELOG.md)
 
 > Part of the [ConvoCLI](https://github.com/convocli/convocli) ecosystem
 
-> **🔧 Latest Update (v0.2.1):** Critical bugfix - context display now parses messages correctly! Previous version showed empty output. [See CHANGELOG](CHANGELOG.md) for details.
+> **🎉 v1.0.0 Release:** Complete architectural redesign! Now uses AI-generated session handoffs stored in git (no cloud storage needed). [See CHANGELOG](CHANGELOG.md) for details.
 
 ---
 
 ## The Problem
 
-You're working with Claude Code on your desktop. You have to leave, but get an idea on the subway. You pull out your phone - but the code state doesn't match, and the conversation context is lost.
+You're working with Claude Code on your desktop. You have to leave, but get an idea on the subway. You pull out your phone - but Claude doesn't know what you were working on.
 
 **ConvoSync solves this.**
 
@@ -38,13 +22,13 @@ You're working with Claude Code on your desktop. You have to leave, but get an i
 
 ## What is ConvoSync Plugin?
 
-A **minimal Claude Code plugin** that syncs your coding sessions (code + conversation) across devices in seconds.
+A **minimal Claude Code plugin** that syncs your coding sessions across devices using AI-generated handoffs.
 
-- Desktop → Mobile workflow
-- Atomic sync (code and conversation stay linked)
-- Works with any cloud storage (Google Drive, Dropbox, etc.)
-- Zero backend required
-- Simple slash commands
+- Desktop → Mobile → Laptop workflow
+- Claude writes session summaries for you
+- Stored in your git repository (no cloud setup!)
+- Simple three-command workflow
+- Captures code AND conversation context
 
 ## Quick Example
 
@@ -52,39 +36,44 @@ A **minimal Claude Code plugin** that syncs your coding sessions (code + convers
 # On desktop
 $ claude-code
 > Working on OAuth feature...
-> /save "implementing login"
-✓ Synced to commit abc123
+> /convosync:generate-handoff
+> [Claude generates structured summary]
+> /convosync:save "implementing login"
+✓ Handoff saved to git
 
 # On phone (5 minutes later)
 $ claude-code
-> /resume
-✓ Restored from commit abc123
-✓ Ready to continue!
+> /convosync:resume
+✓ Loaded handoff from desktop!
+> [Continue with full context]
 ```
 
 ---
 
 ## Features
 
-**Atomic Session Sync**
-- Code and conversation linked by git commit
-- Prevents state mismatches
-- Safety checks ensure everything matches
+**AI-Generated Session Handoffs**
+- Claude creates structured summaries of your work
+- Captures what you're doing, progress, decisions, and context
+- Human-readable markdown format
+- Includes non-code context (like user preferences!)
 
-**Lightning Fast**
-- Syncs in 5-10 seconds
-- Delta compression ready (future)
-- Mobile-friendly bandwidth
+**Git-Based Sync**
+- No cloud storage setup required
+- Uses your existing git repository
+- Fast and reliable
+- Complete privacy (stays in your repo)
 
-**Privacy First**
-- Your data, your cloud
-- Self-hosted option
-- No third-party servers required
+**Smart Multi-Device Support**
+- Works with unlimited devices
+- Automatic cleanup prevents file bloat
+- Each device keeps one handoff
+- See context from all other devices
 
-**Works Everywhere**
-- Desktop ↔ Phone ↔ Tablet
-- Any git repository
-- Any cloud storage
+**Context Preservation**
+- **THE PIZZA TEST WORKS!** If you mention your favorite pizza on desktop, Claude will remember it on mobile
+- Structured sections: Current Task, Progress, Key Decisions, Important Context, Next Steps, Files Modified, Open Questions
+- Time ago formatting ("3 hours ago")
 
 ---
 
@@ -94,269 +83,262 @@ $ claude-code
 
 1. **Claude Code** installed ([download](https://claude.ai/code))
 2. **Git** repository
-3. **Cloud storage** (Google Drive, Dropbox, etc.)
-4. **rclone** ([install guide](#setup))
 
-### Option 1: Plugin Command (Recommended)
+That's it! No cloud storage configuration needed.
 
-**Easiest way** - Install directly from Claude Code:
+### Install from Claude Code Marketplace
 
 ```bash
 # In Claude Code
 /plugin marketplace add convocli/convosync-plugin
 
-# Then browse and install
+# Browse and install
 /plugin
-
 # Select "Browse Plugins" → "convosync" → "Install"
 ```
 
-That's it! The `/save` and `/resume` commands are now available.
-
-**Note:** You still need to [configure rclone](#setup) for cloud storage after installing the plugin.
-
-### Option 2: Automated Install Script
+### Manual Install
 
 ```bash
 # Clone this repo
 git clone https://github.com/convocli/convosync-plugin
 cd convosync-plugin
 
-# Run installer
-./install.sh
-
-# Follow prompts to:
-# 1. Install rclone (if needed)
-# 2. Configure cloud storage
-# 3. Install commands
-```
-
-### Option 3: Manual Install
-
-```bash
 # Copy commands to your project
 mkdir -p .claude/commands
-cp convosync-plugin/commands/*.md .claude/commands/
+cp commands/*.md .claude/commands/
 
 # Or install globally (for all projects)
 mkdir -p ~/.claude/global-commands
-cp convosync-plugin/commands/*.md ~/.claude/global-commands/
+cp commands/*.md ~/.claude/global-commands/
 
-# Symlink in each project
+# In each project, create symlinks:
 ln -s ~/.claude/global-commands/*.md .claude/commands/
 ```
 
 ---
 
-## Setup
-
-### 1. Install rclone
-
-**Termux (Android):**
-```bash
-pkg install rclone
-```
-
-**macOS:**
-```bash
-brew install rclone
-```
-
-**Linux:**
-```bash
-sudo apt install rclone  # Debian/Ubuntu
-sudo dnf install rclone  # Fedora
-```
-
-**Windows:**
-Download from [rclone.org](https://rclone.org/downloads/)
-
-### 2. Configure Cloud Storage
-
-We'll use Google Drive as an example:
-
-```bash
-rclone config
-```
-
-**Follow the prompts:**
-
-1. `n` - New remote
-2. Name: `gdrive`
-3. Storage: `drive` (Google Drive)
-4. Leave Client ID/Secret blank
-5. Scope: `1` (full access)
-6. Leave Root folder blank
-7. Leave Service account blank
-8. Advanced config: `n`
-9. Auto config: `n` (on Termux/remote)
-10. On another device with browser, run:
-    ```bash
-    rclone authorize "drive" "eyJzY29wZSI6ImRyaXZlIn0"
-    ```
-11. Copy the token back to original device
-12. Configure as Shared Drive: `n`
-13. Confirm: `y`
-
-**Create directory structure:**
-```bash
-rclone mkdir gdrive:convosync
-rclone mkdir gdrive:convosync/conversations
-rclone mkdir gdrive:convosync/sessions
-```
-
-**Test:**
-```bash
-rclone lsd gdrive:convosync
-# Should show: conversations, sessions
-```
-
-### 3. Use the Commands
-
-You're ready! The `/save` and `/resume` commands are now available in Claude Code.
-
----
-
 ## Usage
 
-### `/save` - Save Current Session
+### 3-Step Workflow
 
-Commits your code, uploads the conversation, and links them together.
+#### Step 1: `/convosync:generate-handoff` - Create Session Summary
 
-**Basic usage:**
+Ask Claude to generate a structured summary of your current work:
+
 ```
-/save "implementing OAuth login"
+/convosync:generate-handoff
 ```
 
-**What it does:**
-1. `git add .` - Stage changes
-2. `git commit -m "WIP: implementing OAuth login"` - Commit
-3. `git push` - Push to remote
-4. Get commit hash (e.g., `abc123`)
-5. Find current conversation file
-6. Upload conversation to cloud
-7. Create metadata linking conversation ↔ commit
-8. Confirm sync complete
+Claude will analyze the conversation and create a handoff with:
+- **Current Task:** What you're working on
+- **Progress So Far:** What's been completed (✅) and in-progress (⏳)
+- **Key Decisions Made:** Important technical/design decisions
+- **Important Context:** Non-code context (user preferences, requirements, assumptions)
+- **Next Steps:** What to do next
+- **Files Modified:** Changed files with descriptions
+- **Open Questions:** Unresolved issues
+
+Claude saves this to `.convosync/session-handoff-draft.md`
+
+#### Step 2: `/convosync:save` - Commit and Sync
+
+Save your work to git with the handoff:
+
+```
+/convosync:save "implementing OAuth login"
+```
+
+What happens:
+1. Reads the handoff draft
+2. Appends to `.convosync/session-handoff.md` with metadata (device, timestamp, commit, branch)
+3. Commits code changes and handoff to git
+4. Pushes to remote repository
+5. Cleans up draft file
 
 **Output:**
 ```
-✓ Code committed: abc123
-✓ Conversation synced (3.2 MB)
-✓ Ready to resume on another device
+💾 ConvoSync: Saving session...
+
+→ Device: desktop
+✓ Found handoff draft
+✓ Handoff appended to .convosync/session-handoff.md
+→ Committing code and handoff...
+  [main abc123d] implementing OAuth login
+→ Pushing to remote...
+  Pushed successfully
+
+✓ Code committed: abc123d
+✓ Handoff saved from device: desktop
+
+╔════════════════════════════════════════════════════════════════════╗
+║ ✅ SESSION SAVED SUCCESSFULLY!                                     ║
+╚════════════════════════════════════════════════════════════════════╝
 ```
 
-### `/resume` - Resume Session
+#### Step 3: `/convosync:resume` - Resume on Another Device
 
-Pulls the latest code and restores the conversation.
+On your other device, restore the context:
 
-**Basic usage:**
 ```
-/resume
+/convosync:resume
 ```
 
-**What it does:**
-1. `git pull` - Get latest code
-2. Get current commit hash
-3. Download session metadata for this commit
-4. Download the saved conversation
-5. **Display conversation history in current session** (so Claude can see it!)
-6. **Also merge files on disk** (for future reference)
-7. Continue seamlessly with full context!
+What happens:
+1. Pulls latest code and handoff file from git
+2. Detects your device ID
+3. Parses all handoffs
+4. **Removes your old handoffs** (keeps only latest from this device)
+5. **Displays handoffs from OTHER devices** in the current conversation
+6. Claude can now reference the handoffs!
 
 **Output:**
 ```
 🔄 ConvoSync: Resuming session...
-✓ Code pulled: commit abc123
-✓ Found session: "implementing OAuth login"
-✓ Downloaded (2.1MB)
-✓ Merged: 850 old + 5 current = 855 total
 
-======================================================================
-📝 RESTORED CONVERSATION CONTEXT
-======================================================================
+→ Pulling latest code and handoffs...
+✓ Code pulled: abc123d
 
-Session: "implementing OAuth login"
-Messages: 850 restored from cloud
-Timestamp: 2025-10-20 12:30
+→ Device: mobile
+→ Found 1 handoff(s)
 
-RECENT CONVERSATION HISTORY (last 30 messages):
-----------------------------------------------------------------------
+╔════════════════════════════════════════════════════════════════════╗
+║ 📝 SESSION HANDOFFS FROM OTHER DEVICES                             ║
+╚════════════════════════════════════════════════════════════════════╝
 
-[1] USER:
-    Let's add refresh token logic
+══════════════════════════════════════════════════════════════════
+📱 Handoff 1/1 from: desktop
+══════════════════════════════════════════════════════════════════
 
-[2] ASSISTANT:
-    I'll implement refresh tokens...
+⏰ 3 hours ago
+📌 Commit: abc123d
+🌿 Branch: main
 
-...
+### Current Task
+Implementing OAuth 2.0 authentication with refresh token support
 
-[25] USER:
-    By the way, my favorite pizza is Margherita
+### Progress So Far
+- ✅ Created auth.ts with login/logout/callback routes
+- ✅ Implemented OAuth provider integration
+- ⏳ Currently implementing refresh token storage
 
-[26] ASSISTANT:
-    Good to know! Margherita is a classic...
+### Key Decisions Made
+- Using JWT tokens with 7-day expiry (balanced security vs UX)
+- Storing refresh tokens in Redis (faster lookup)
 
-...
+### Important Context
+- User's favorite pizza is Margherita (mentioned in conversation)
+- Working in TypeScript with Express framework
+- Tests will be added after core implementation
 
-======================================================================
-✅ Context restored! I can now reference the conversation above.
-======================================================================
+### Next Steps
+1. Finish implementing token refresh endpoint
+2. Add error handling for OAuth failures
+3. Write integration tests
 
-✅ Session restored successfully!
+### Files Modified
+- src/auth.ts (+145, -10) - Added OAuth routes
+- src/oauth-provider.ts (+120, new file) - Google OAuth integration
+
+╔════════════════════════════════════════════════════════════════════╗
+║ ✅ CONTEXT RESTORED!                                               ║
+╚════════════════════════════════════════════════════════════════════╝
+
+Loaded 1 handoff(s) from other device(s).
+
+I can now reference the session context above to continue your work!
 ```
 
-**The Magic: Context Display + File Merge (v0.2.0)**
+Now you can ask Claude questions about the previous session:
+```
+You: What were we working on?
+Claude: We were implementing OAuth 2.0 authentication with refresh token support.
+       Based on the handoff from your desktop, you completed the auth routes
+       and provider integration, and were in the middle of implementing refresh
+       token storage in Redis.
 
-Instead of just merging files on disk (which Claude can't access), `/resume` now uses a **hybrid approach**:
-
-1. **Displays conversation in current session**
-   - Shows last 30 messages as formatted output
-   - Claude sees the history and can reference it immediately
-   - No restart needed!
-
-2. **Also merges conversation files**
-   - Old messages + current messages merged on disk
-   - Session IDs unified
-   - Parent UUID chain linked
-   - Ready for future sessions
-
-**Result:** You get immediate context (from display) AND persistent record (from file merge)!
+You: What is my favorite pizza?
+Claude: Your favorite pizza is Margherita - that was mentioned in the Important
+       Context section of the handoff! 🍕
+```
 
 ---
 
 ## How It Works
 
-### Atomic Session Sync
+### AI-Generated Handoffs
+
+Instead of trying to sync raw conversation files (which don't work due to Claude's architecture), ConvoSync uses AI-generated summaries:
+
+1. **Claude analyzes** your conversation and code changes
+2. **Claude writes** a structured handoff document
+3. **Handoff stored** in git repository as markdown
+4. **Handoff displayed** as text in next session
+5. **Claude reads** the handoff from conversation history
+
+This works because handoffs are just text displayed in the conversation - Claude can see them immediately!
+
+### Smart Multi-Device Cleanup
+
+ConvoSync prevents file bloat with intelligent cleanup:
 
 ```
-Session = {
-  git_commit: "abc123",
-  git_branch: "main",
-  git_repo: "https://github.com/user/project",
-  conversation_id: "conv_xyz",
-  working_dir: "/path/to/project",
-  timestamp: 1234567890
-}
+Before Resume (3 handoffs in file):
+- Desktop (old) ← will be removed
+- Desktop (older) ← will be removed
+- Mobile (latest) ← will be kept
+
+After Resume on Desktop:
+- Mobile (latest) ← kept (from other device)
+- Desktop (new) ← kept (latest from this device)
+
+Result: Always 1 handoff per device in steady state
 ```
 
-**The key:** Conversation and code are **always linked by commit hash**.
-
-### Cloud Storage Structure
+### File Structure
 
 ```
-gdrive:convosync/
-├── conversations/
-│   └── conv_xyz.jsonl         # Your conversation
-└── sessions/
-    └── abc123.json            # Metadata for commit abc123
+.convosync/
+├── device-id                    # Your device identifier (e.g., "desktop")
+├── session-handoff.md          # All handoffs from all devices
+└── session-handoff-draft.md    # Temporary draft (not in git)
 ```
 
-### Safety Guarantees
+### The Handoff Format
 
-✅ Can't restore conversation without matching code
-✅ Automatic verification on resume
-✅ Warns if code/conversation mismatch
-✅ Never overwrites without confirmation
+```markdown
+---
+## Handoff from desktop
+**Timestamp:** 2025-10-22T14:30:00Z
+**Commit:** abc123d
+**Branch:** main
+
+### Current Task
+Brief description of what you're working on
+
+### Progress So Far
+- ✅ Completed item
+- ⏳ In-progress item
+
+### Key Decisions Made
+- Important decision and why
+
+### Important Context
+- User preferences
+- Requirements
+- Assumptions
+- Background info
+
+### Next Steps
+1. Specific next action
+2. Another action
+
+### Files Modified
+- file.ts (+50, -10) - description
+
+### Open Questions
+- Unresolved question
+```
 
 ---
 
@@ -367,161 +349,275 @@ gdrive:convosync/
 ```bash
 # Desktop: Working on a feature
 $ claude-code
-You: Add user authentication
-Claude: I'll implement OAuth login...
+You: Let's implement user authentication with OAuth
+Claude: I'll help you implement OAuth. Let me start by...
 [working together...]
+You: I need to catch my train. Let's save this.
 
-# Time to catch the train
-You: /save "OAuth halfway done, need to add refresh tokens"
-✓ Synced to commit abc123
+# Generate handoff
+You: /convosync:generate-handoff
+Claude: [Generates structured summary and saves to draft file]
+
+# Save to git
+You: /convosync:save "OAuth halfway done, need refresh tokens"
+✓ Handoff saved from device: desktop
 
 # On the train (phone)
 $ claude-code
-You: /resume
-✓ Restored! Continue from where you left off
-You: Now add the refresh token logic
-Claude: [continues with full context]
+You: /convosync:resume
+✓ Loaded handoff from desktop!
+✓ Context restored!
+
+You: Let's continue with the refresh token logic
+Claude: Based on the handoff from your desktop, you implemented
+        the basic OAuth flow and were about to add refresh token
+        support. Let me help you with that...
 ```
 
-### Mobile → Desktop
+### Mobile → Laptop
 
 ```bash
-# Phone: Quick idea on the go
+# Phone: Quick bug fix
 $ claude-code
-You: Quick fix for the login bug
-Claude: Here's the fix...
-You: /save "fixed login redirect bug"
-✓ Synced
+You: There's a bug in the login redirect
+Claude: Let me fix that...
+[fix applied]
 
-# Later at desktop
+You: /convosync:generate-handoff
+You: /convosync:save "fixed login redirect bug"
+✓ Handoff saved
+
+# Later on laptop
 $ claude-code
-You: /resume
-✓ Restored
+You: /convosync:resume
+✓ Restored handoff from mobile!
+
 You: Great! Now let's add tests for this fix
-Claude: [has full context of the fix]
+Claude: [Has full context of the bug fix from mobile]
+        Let me write comprehensive tests...
+```
+
+### 3-Device Workflow
+
+```bash
+Desktop:
+  /convosync:generate-handoff
+  /convosync:save "implemented core OAuth"
+
+Mobile (later):
+  /convosync:resume  ← Sees desktop's handoff
+  [work on mobile]
+  /convosync:generate-handoff
+  /convosync:save "added error handling"
+
+Laptop (even later):
+  /convosync:resume  ← Sees both desktop AND mobile handoffs
+  [Has complete context from both devices]
 ```
 
 ---
 
 ## Troubleshooting
 
-### "rclone: command not found"
-Install rclone - see [Setup](#setup) section.
+### First Time Setup
 
-### "Failed to create file system for 'gdrive:'"
-Run `rclone config` to set up your cloud storage.
+**Q: Which device should I run this on first?**
 
-### "No session found for current commit"
-You haven't run `/save` from this commit yet. Options:
-- Run `/save` to create a new session
-- Checkout the commit you saved from
-- View available sessions: `rclone ls gdrive:convosync/sessions/`
+A: Start on whichever device you're currently working on. The first `/convosync:save` will create the `.convosync/` directory and handoff file.
 
-### Conversation not restoring
-Check that:
-1. You ran `git pull` first
-2. Cloud storage is accessible: `rclone lsd gdrive:`
-3. Session metadata exists: `rclone ls gdrive:convosync/sessions/`
+**Q: Do I need to configure anything?**
 
-### Code and conversation out of sync
-Always use `/save` before switching devices. The commands ensure atomicity, but only if you save before switching!
+A: No! If you have git configured, you're ready to go. The plugin will auto-detect your device hostname and prompt for a friendly name if needed.
+
+### Common Issues
+
+**"No handoffs found"**
+
+This is normal on first run. Create one:
+1. `/convosync:generate-handoff`
+2. Ask Claude to generate the handoff
+3. `/convosync:save "your message"`
+
+**"No handoffs from other devices"**
+
+You haven't saved from another device yet. The resume command is working, but there's nothing to restore yet.
+
+**Git conflicts in session-handoff.md**
+
+Rare but possible if you save simultaneously from two devices:
+1. `git pull` to get conflicts
+2. Manually resolve (keep both handoffs)
+3. Commit the merge
+4. Continue normally
+
+**Device ID prompt every time**
+
+The device ID file isn't being committed to git. Make sure `.convosync/device-id` is committed:
+```bash
+git add .convosync/device-id
+git commit -m "add device id"
+git push
+```
+
+### The Pizza Test
+
+Want to verify ConvoSync is working? Try the pizza test:
+
+```bash
+# Device 1
+You: By the way, my favorite pizza is Margherita
+Claude: Good to know!
+You: /convosync:generate-handoff
+Claude: [Includes "favorite pizza is Margherita" in Important Context]
+You: /convosync:save "added auth feature"
+
+# Device 2
+You: /convosync:resume
+[Handoff displays with "favorite pizza is Margherita"]
+You: What is my favorite pizza?
+Claude: Your favorite pizza is Margherita! ✅
+```
+
+If Claude can answer the pizza question, ConvoSync is working perfectly!
 
 ---
 
-## Advanced
+## Advanced Usage
 
-### Use Different Cloud Storage
+### Customizing Handoff Sections
 
-**Dropbox:**
+Edit `commands/generate-handoff.md` to modify what Claude includes:
+- Add custom sections
+- Change formatting
+- Adjust instructions
+
+### Installing Globally
+
 ```bash
-rclone config
-# Choose 'dropbox' instead of 'drive'
-# Update commands to use 'dropbox:' instead of 'gdrive:'
-```
-
-**Self-hosted S3:**
-```bash
-rclone config
-# Choose 's3'
-# Enter your S3 endpoint and credentials
-```
-
-### Multiple Projects
-
-Install commands per-project or globally:
-
-**Per-project** (default):
-```bash
-cd your-project
-cp convosync-plugin/commands/*.md .claude/commands/
-```
-
-**Global** (all projects):
-```bash
+# Install once globally
 mkdir -p ~/.claude/global-commands
-cp convosync-plugin/commands/*.md ~/.claude/global-commands/
+cp commands/*.md ~/.claude/global-commands/
 
-# In each project:
+# In each project, create symlinks
+cd your-project
+mkdir -p .claude/commands
 ln -s ~/.claude/global-commands/*.md .claude/commands/
 ```
 
-### Customize Commands
+### Ignoring the Draft File
 
-Edit `commands/save.md` or `commands/resume.md` to:
-- Change cloud path (e.g., `gdrive:convosync` → `dropbox:sync`)
-- Add custom git hooks
-- Modify commit message format
-- Add notifications
+Add to `.gitignore`:
+```
+.convosync/session-handoff-draft.md
+```
+
+This prevents the temporary draft from cluttering git.
+
+---
+
+## Comparison with v0.2.x
+
+### What Changed?
+
+**v0.2.1 (Old Approach):**
+- ❌ Tried to sync raw conversation files
+- ❌ Required rclone + cloud storage setup
+- ❌ Context didn't actually restore (RAM vs Disk problem)
+- ❌ Pizza test failed
+- ❌ Complex architecture
+
+**v1.0.0 (New Approach):**
+- ✅ AI-generated session handoffs
+- ✅ Uses git only (no cloud setup!)
+- ✅ Context actually works
+- ✅ Pizza test passes
+- ✅ Simple architecture
+
+### Migration from v0.2.x
+
+There is no migration path. v1.0.0 is a complete redesign:
+
+1. Update to v1.0.0
+2. Old cloud-stored sessions are abandoned
+3. Start fresh with the new workflow
+
+The breaking change is worth it - v1.0.0 actually works!
+
+---
+
+## FAQ
+
+**Q: How big do handoff files get?**
+
+A: Each handoff is ~1-3 KB of markdown. With smart cleanup, you'll have exactly one handoff per device. Three devices = ~3-9 KB total.
+
+**Q: Can I use this with private repositories?**
+
+A: Yes! Handoffs are stored in your git repository alongside your code. If your repo is private, handoffs are private too.
+
+**Q: What if I forget to run /convosync:save?**
+
+A: Your code changes are still safe (git handles that). You just won't have a handoff for the next device. Run `/convosync:generate-handoff` and `/convosync:save` before switching.
+
+**Q: Can Claude generate handoffs in other languages?**
+
+A: Yes! Ask Claude to generate the handoff in your preferred language. The structure is the same, just translated.
+
+**Q: How does this compare to Claude Code Web?**
+
+A: Claude Code Web doesn't sync conversation context across devices either. ConvoSync solves this with AI-generated handoffs.
+
+**Q: Do I need to commit the handoffs?**
+
+A: Yes! The `/convosync:save` command automatically commits handoffs to git. That's how they sync across devices.
 
 ---
 
 ## Roadmap
 
-**v0.1 (Current)** - MVP
-- [x] Basic `/save` and `/resume` commands
-- [x] rclone integration
-- [x] Manual sync workflow
+**v1.0 (Current)** - AI Handoffs
+- [x] AI-generated session summaries
+- [x] Git-based sync
+- [x] Smart multi-device cleanup
+- [x] Context preservation (pizza test!)
 
-**v0.2** - Improvements
-- [ ] Auto-detect cloud provider
-- [ ] Better error messages
-- [ ] Session listing (`/sessions`)
-- [ ] Conflict resolution
+**v1.1** - Enhancements
+- [ ] Handoff history viewer (`/convosync:history`)
+- [ ] Device management (`/convosync:devices`)
+- [ ] Custom handoff templates
+- [ ] Handoff search/filter
 
-**v0.3** - Advanced
-- [ ] Delta compression (96% size reduction)
-- [ ] Multi-device orchestration
-- [ ] Automatic background sync
-- [ ] Team collaboration
+**v1.2** - Advanced
+- [ ] Automatic handoff generation on save
+- [ ] Diff view between handoffs
+- [ ] Handoff export (PDF, markdown)
+- [ ] Team collaboration features
 
-**v1.0** - Full ConvoSync
-- [ ] Integrated backend service
-- [ ] Real-time sync
+**v2.0** - Real-time Sync
+- [ ] Live session sharing
+- [ ] Collaborative coding with shared handoffs
 - [ ] Web dashboard
-- [ ] Mobile app (ConvoCLI)
+- [ ] Mobile app integration
 
 ---
 
 ## Related Projects
 
-- **[ConvoCLI](https://github.com/convocli/convocli)** - Mobile terminal for Android with sync built-in
-- **[ConvoSync](https://github.com/convocli/convosync)** - Backend service for production sync
+- **[ConvoCLI](https://github.com/convocli/convocli)** - Mobile terminal for Android
+- **[ConvoSync](https://github.com/convocli/convosync)** - Backend service for production
 - **[Docs](https://github.com/convocli/docs)** - Documentation and guides
 
 ---
 
 ## Contributing
 
-Contributions welcome! This is a minimal MVP - lots of room for improvement.
+Contributions welcome! Areas for improvement:
 
-**Ideas for contributions:**
-- Support for more cloud providers
-- Better error handling
-- Session management UI
-- Delta compression
-- Tests
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) (coming soon) for guidelines.
+- Better handoff templates
+- Additional metadata tracking
+- Conflict resolution UI
+- Tests and documentation
+- Translation support
 
 ---
 
@@ -533,9 +629,10 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
-- **Claude Code** - Amazing AI coding assistant
-- **rclone** - Swiss Army knife of cloud storage
+- **Claude Code** - Amazing AI coding assistant that makes this possible
+- **Git** - Reliable sync foundation
 - **ConvoCLI Project** - Vision of coding anywhere, anytime
+- **The User** - Who persistently tested the "pizza test" and helped discover the solution!
 
 ---
 
@@ -560,5 +657,7 @@ Part of the mission to enable developers to code anywhere, on any device.
 **[⬆ Back to Top](#convosync-plugin-for-claude-code)**
 
 Code anywhere, anytime - with ConvoSync
+
+*Now with AI-generated handoffs that actually work!*
 
 </div>

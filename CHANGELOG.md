@@ -2,6 +2,224 @@
 
 All notable changes to ConvoSync Plugin will be documented in this file.
 
+## [1.0.0] - 2025-10-22
+
+### COMPLETE ARCHITECTURAL REDESIGN
+
+This is a **major breaking release** that fundamentally changes how ConvoSync works. The entire approach has been redesigned based on discoveries about Claude Code's architecture.
+
+#### Why the Redesign?
+
+**The Fundamental Problem with v0.1.x-0.2.x:**
+- Versions 0.1.0 through 0.2.1 attempted to sync context by manipulating conversation files
+- **Critical discovery:** Claude loads conversation into RAM at session start
+- File changes (even successful merges) don't affect active Claude context
+- The "pizza test" failed: Claude couldn't access context from merged files
+- User quote: "I still don't have access to that information"
+- Result: The entire file manipulation approach was fundamentally flawed
+
+**The New Solution:**
+Instead of fighting against Claude's architecture, v1.0.0 works WITH it:
+- Claude generates AI-written session handoffs (structured summaries)
+- Handoffs stored in git repository as markdown
+- Resume displays handoffs as text in current conversation
+- Claude sees handoffs as conversation history
+- **This actually works because it's just text, not file manipulation**
+
+### Changed
+
+#### Complete Command Redesign
+
+**NEW: `/convosync:generate-handoff`**
+- Prompts Claude to generate structured session summary
+- Creates handoff with sections: Current Task, Progress, Key Decisions, Important Context, Next Steps, Files Modified, Open Questions
+- Saves to `.convosync/session-handoff-draft.md`
+- **Captures non-code context** (e.g., user preferences like "favorite pizza is Margherita")
+
+**REWRITTEN: `/convosync:save`**
+- No longer manipulates conversation files
+- No longer uses rclone/cloud storage
+- Reads handoff draft created by generate-handoff
+- Appends handoff to `.convosync/session-handoff.md` with metadata:
+  - Device ID
+  - Timestamp (ISO 8601)
+  - Git commit hash
+  - Branch name
+- Commits to git repository
+- Pushes to remote
+- Device identification with smart hostname detection
+
+**REWRITTEN: `/convosync:resume`**
+- No longer downloads/merges conversation files
+- No longer uses rclone/cloud storage
+- Pulls latest code and handoff file from git
+- Parses all handoffs from `.convosync/session-handoff.md`
+- **Smart cleanup algorithm:**
+  - Keeps ALL handoffs from other devices
+  - Keeps only LATEST handoff from current device
+  - Result: Steady state = one handoff per device (no file bloat)
+  - Scales to unlimited devices
+- Displays handoffs from OTHER devices in current conversation
+- Time ago formatting ("3 hours ago", "2 days ago")
+- Commits cleaned handoff file
+
+### Added
+
+#### Device Identification System
+- Each device gets unique identifier stored in `.convosync/device-id`
+- Smart hostname detection with user prompt for generic names
+- Enables per-device handoff tracking
+- Git-tracked for cross-device consistency
+
+#### Smart Cleanup Algorithm
+- Prevents file bloat in multi-device scenarios
+- Each device removes its own old handoffs
+- Preserves all handoffs from other devices
+- Automatic execution during resume
+- Works with 2, 3, or unlimited devices
+
+#### AI-Generated Session Handoffs
+- Structured markdown format with consistent sections
+- Captures both code AND conversation context
+- Human-readable for manual review
+- Git-tracked for version history
+- Metadata headers for device/time tracking
+
+#### New File Structure
+```
+.convosync/
+├── device-id                    # Device identifier (git-tracked)
+├── session-handoff.md          # All handoffs from all devices (git-tracked)
+└── session-handoff-draft.md    # Temporary draft (gitignored)
+```
+
+### Removed
+
+#### Deprecated Cloud Storage Integration
+- Removed rclone dependency
+- Removed Google Drive/Dropbox integration
+- Removed cloud conversation file upload/download
+- All sync now happens via git repository
+
+#### Deprecated Conversation File Manipulation
+- Removed conversation file merge logic
+- Removed JSONL parsing
+- Removed session ID manipulation
+- Removed parent UUID chain linking
+- These features never worked due to RAM vs Disk limitation
+
+#### Removed Files
+- `scripts/convosync-save.sh` - obsolete
+- `scripts/convosync-resume.sh` - obsolete
+- Cloud storage configuration - no longer needed
+
+### Fixed
+
+#### THE PIZZA TEST NOW WORKS
+The fundamental "pizza test" that failed in all previous versions:
+
+v0.2.1 (FAILED):
+```
+Desktop: "My favorite pizza is Margherita"
+[save and switch to mobile]
+Mobile: "What is my favorite pizza?"
+Claude: "I don't have access to that information" ❌
+```
+
+v1.0.0 (WORKS):
+```
+Desktop: "My favorite pizza is Margherita"
+Desktop: /convosync:generate-handoff
+Desktop: /convosync:save "added OAuth"
+
+Mobile: /convosync:resume
+[Handoff displays: "User's favorite pizza is Margherita"]
+Mobile: "What is my favorite pizza?"
+Claude: "Your favorite pizza is Margherita - I can see that
+        in the Important Context section of the handoff from
+        your desktop device!" ✅
+```
+
+#### Multi-Device File Bloat
+- v0.2.1 and earlier: No cleanup, file grew indefinitely
+- v1.0.0: Smart cleanup keeps exactly one handoff per device
+
+#### RAM vs Disk Problem
+- v0.2.1 and earlier: Changed files, Claude couldn't see changes
+- v1.0.0: Displays handoffs as text, Claude sees immediately
+
+### Migration Guide
+
+**Breaking Changes:**
+1. Cloud storage no longer used - handoffs stored in git repository
+2. Old conversation files in cloud are abandoned
+3. No migration path for old sessions - start fresh with v1.0.0
+
+**How to Upgrade:**
+1. Update plugin to v1.0.0
+2. Old sessions cannot be recovered (cloud-based)
+3. Start new workflow:
+   - `/convosync:generate-handoff` to create handoff
+   - `/convosync:save "message"` to commit
+   - `/convosync:resume` on other device
+
+**Benefits of Breaking Change:**
+- No rclone setup required
+- No cloud storage configuration
+- Git is all you need (already have it!)
+- Actually works (unlike v0.2.x)
+- Simpler architecture
+- Faster sync
+- Better privacy (stays in your git repo)
+
+### Technical Details
+
+**Handoff Format:**
+```markdown
+---
+## Handoff from desktop
+**Timestamp:** 2025-10-22T14:30:00Z
+**Commit:** abc123d
+**Branch:** main
+
+### Current Task
+Implementing OAuth 2.0 authentication
+
+### Progress So Far
+- ✅ Created auth.ts
+- ⏳ Implementing refresh tokens
+
+### Important Context
+- User's favorite pizza is Margherita
+
+### Next Steps
+1. Finish token refresh endpoint
+2. Add error handling
+```
+
+**Why This Works:**
+- Handoffs are just text displayed in conversation
+- Claude reads conversation history (including handoffs)
+- No file manipulation, no RAM/disk issues
+- Works with Claude's architecture, not against it
+
+**Scalability:**
+- Tested with 3+ device scenario
+- Smart cleanup prevents file bloat
+- Git handles merge conflicts if needed
+- Unlimited device support
+
+### Acknowledgments
+
+This redesign was prompted by the realization that Claude Code Web (the new web interface for Claude Code) wouldn't solve the fundamental context sync problem. After extensive testing and analysis, we discovered:
+
+1. Conversation file manipulation is fundamentally incompatible with Claude's architecture
+2. AI-generated handoffs are superior to raw conversation sync
+3. Git is a more reliable transport than cloud storage
+4. Simpler is better
+
+Thanks to the user who persistently tested the "pizza test" and helped identify the core architectural flaw in v0.1.x-0.2.x!
+
 ## [0.2.1] - 2025-10-20
 
 ### Fixed

@@ -1,2 +1,5 @@
 .idea
 .DS_Store
+
+# ConvoSync temporary files
+.convosync/session-handoff-draft.md

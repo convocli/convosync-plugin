@@ -1,7 +1,7 @@
 {
   "name": "convosync",
-  "description": "Sync your coding sessions across devices - continue exactly where you left off with atomic code + conversation sync",
-  "version": "0.2.1",
+  "description": "Sync your coding sessions across devices with AI-generated session handoffs - Claude creates structured summaries of your work for seamless context transfer",
+  "version": "1.0.0",
   "author": {
     "name": "ConvoCLI Team"
   }
