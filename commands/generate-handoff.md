@@ -8,6 +8,10 @@ Prompts Claude to generate a structured summary of the current work session, inc
 - Progress made
 - Key decisions
 - Important context (including non-code details!)
+- Blockers and dependencies
+- Environment setup changes
+- Known issues and technical debt
+- Debug/error context
 - Next steps
 
 **Usage:**
@@ -50,6 +54,40 @@ Any non-code context that's important to preserve:
 - Assumptions made
 - Background information
 - Anything I said that isn't in the code but is important
+
+### Blockers/Waiting On
+What's blocking progress or what we're waiting for:
+- External dependencies (API keys, permissions, etc.)
+- Waiting on other teams or people
+- Third-party service issues
+- Missing requirements or unclear specifications
+- If nothing is blocking, write "None - ready to proceed"
+
+### Environment/Setup
+Changes to development environment or setup:
+- New dependencies installed (npm packages, system libraries, etc.)
+- Environment variables added or changed
+- Configuration file changes
+- Database migrations run
+- Services that need to be running (Redis, PostgreSQL, etc.)
+- If no changes, write "No environment changes"
+
+### Known Issues/Debt
+Technical debt, shortcuts, or known issues:
+- Shortcuts taken with file:line references (e.g., "Hardcoded timeout in auth.ts:45")
+- TODOs added to code
+- Known bugs or issues introduced
+- Workarounds implemented
+- Things that work but need improvement
+- If none, write "No known issues"
+
+### Debug/Error Context
+If debugging, include error details:
+- Error messages or stack traces
+- Steps to reproduce the issue
+- What's been tried (failed attempts)
+- Current hypothesis about the cause
+- If not debugging, write "No active debugging"
 
 ### Next Steps
 What should be done next (numbered list):
@@ -102,6 +140,25 @@ Implementing OAuth 2.0 authentication with Google provider and refresh token sup
 - Working in TypeScript with Express framework
 - Tests will be added after core OAuth implementation is complete
 - Redis must be running on localhost:6379 for development
+
+### Blockers/Waiting On
+- Waiting on production OAuth credentials from DevOps team (ETA: tomorrow)
+- Need Redis Cloud account approved for staging environment
+
+### Environment/Setup
+- Installed packages: `redis@4.6.0`, `jsonwebtoken@9.0.2`, `@types/jsonwebtoken@9.0.5`
+- Added env vars: `REDIS_URL`, `JWT_SECRET`, `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`
+- Run `npm install` and copy `.env.example` to `.env` on new device
+- Redis must be running: `docker run -p 6379:6379 redis` or use local install
+
+### Known Issues/Debt
+- Session timeout hardcoded to 7 days in auth.ts:67 (TODO: move to config)
+- Error handling is basic - needs proper error types and messages
+- No token rotation yet (security enhancement for later)
+- Refresh token endpoint returns 200 even on partial failures (needs fix)
+
+### Debug/Error Context
+No active debugging
 
 ### Next Steps
 1. Finish implementing token refresh endpoint in auth.ts
