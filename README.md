@@ -84,7 +84,13 @@ That's it! The commands are now available in Claude Code.
 /convosync:save "your commit message"
 ```
 
-On first run, Claude will generate a handoff automatically. Then run the command again to commit.
+Or simply:
+
+```bash
+/convosync:save
+```
+
+If you omit the message, ConvoSync auto-generates a commit message from your handoff's "Current Task". On first run, Claude will generate a handoff automatically. Then run the command again to commit.
 
 **2. Resume on another device:**
 

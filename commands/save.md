@@ -14,7 +14,13 @@ Save current coding session with AI-generated handoff for cross-device sync.
 /convosync:save "your commit message"
 ```
 
+Or omit the message to auto-generate from handoff:
+```
+/convosync:save
+```
+
 **Notes:**
+- **Commit message is optional** - If omitted, ConvoSync extracts the "Current Task" from the handoff to create a meaningful commit message
 - If no handoff draft exists, Claude will generate one automatically
 - You can also pre-generate a handoff using `/convosync:generate-handoff` to review it first
 - The handoff captures both code AND conversation context
@@ -29,8 +35,8 @@ from pathlib import Path
 from datetime import datetime
 import re
 
-# Get commit message from arguments
-commit_msg = ' '.join(sys.argv[1:]) if len(sys.argv) > 1 else "WIP: sync session"
+# Get commit message from arguments (None if not provided - will auto-generate from handoff)
+commit_msg = ' '.join(sys.argv[1:]) if len(sys.argv) > 1 else None
 
 print("💾 ConvoSync: Saving session...")
 print()
@@ -171,6 +177,26 @@ if not draft_file.exists():
 
 handoff_content = draft_file.read_text().strip()
 print("✓ Found handoff draft")
+print()
+
+# Auto-generate commit message from handoff if not provided
+if commit_msg is None:
+    try:
+        # Extract Current Task section from handoff
+        task_match = re.search(r'### Current Task\n(.+?)(?:\n\n|\n###|$)', handoff_content, re.DOTALL)
+        if task_match:
+            current_task = task_match.group(1).strip()
+            # Truncate to 72 chars (git best practice for commit messages)
+            if len(current_task) > 72:
+                commit_msg = current_task[:69] + "..."
+            else:
+                commit_msg = current_task
+            print(f"→ Auto-generated commit message from handoff")
+        else:
+            commit_msg = "WIP: sync session"
+    except:
+        commit_msg = "WIP: sync session"
+
 print()
 
 # ============================================================================
