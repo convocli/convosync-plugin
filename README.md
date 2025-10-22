@@ -27,7 +27,7 @@ A **minimal Claude Code plugin** that syncs your coding sessions across devices 
 - Desktop → Mobile → Laptop workflow
 - Claude writes session summaries for you
 - Stored in your git repository (no cloud setup!)
-- Simple three-command workflow
+- Simple two-command workflow (or optionally three)
 - Captures code AND conversation context
 
 ## Quick Example
@@ -36,8 +36,8 @@ A **minimal Claude Code plugin** that syncs your coding sessions across devices 
 # On desktop
 $ claude-code
 > Working on OAuth feature...
-> /convosync:generate-handoff
-> [Claude generates structured summary]
+> /convosync:save "implementing login"
+[Claude auto-generates handoff if needed]
 > /convosync:save "implementing login"
 ✓ Handoff saved to git
 
@@ -120,17 +120,66 @@ ln -s ~/.claude/global-commands/*.md .claude/commands/
 
 ## Usage
 
-### 3-Step Workflow
+### Primary Workflow (2 Commands)
 
-#### Step 1: `/convosync:generate-handoff` - Create Session Summary
+#### Step 1: `/convosync:save` - Save Session
 
-Ask Claude to generate a structured summary of your current work:
+Save your work with an AI-generated handoff:
+
+```
+/convosync:save "your commit message"
+```
+
+What happens:
+1. **Auto-generates handoff if needed** - If no draft exists, Claude will generate one automatically
+2. Reads the handoff draft
+3. Appends to `.convosync/session-handoff.md` with metadata (device, timestamp, commit, branch)
+4. Commits code changes and handoff to git
+5. Pushes to remote repository
+6. Cleans up draft file
+
+**First run (no handoff):**
+```
+/convosync:save "implementing OAuth"
+→ No draft found, generating handoff...
+→ Please generate handoff (instructions shown)
+[Claude generates and saves handoff]
+/convosync:save "implementing OAuth"
+✓ Handoff saved!
+```
+
+**Subsequent runs (handoff exists):**
+```
+/convosync:save "added error handling"
+✓ Using existing handoff
+✓ Saved to git!
+```
+
+#### Step 2: `/convosync:resume` - Resume on Another Device
+
+On your other device, restore the context:
+
+```
+/convosync:resume
+```
+
+What happens:
+1. Pulls latest code and handoff file from git
+2. Detects your device ID
+3. Parses all handoffs
+4. **Removes your old handoffs** (keeps only latest from this device)
+5. **Displays handoffs from OTHER devices** in the current conversation
+6. Claude can now reference the handoffs!
+
+### Optional: Pre-Generate Handoff
+
+Want to review the handoff before committing? Use the generate command first:
 
 ```
 /convosync:generate-handoff
 ```
 
-Claude will analyze the conversation and create a handoff with:
+Claude will create a handoff with:
 - **Current Task:** What you're working on
 - **Progress So Far:** What's been completed (✅) and in-progress (⏳)
 - **Key Decisions Made:** Important technical/design decisions
@@ -139,22 +188,7 @@ Claude will analyze the conversation and create a handoff with:
 - **Files Modified:** Changed files with descriptions
 - **Open Questions:** Unresolved issues
 
-Claude saves this to `.convosync/session-handoff-draft.md`
-
-#### Step 2: `/convosync:save` - Commit and Sync
-
-Save your work to git with the handoff:
-
-```
-/convosync:save "implementing OAuth login"
-```
-
-What happens:
-1. Reads the handoff draft
-2. Appends to `.convosync/session-handoff.md` with metadata (device, timestamp, commit, branch)
-3. Commits code changes and handoff to git
-4. Pushes to remote repository
-5. Cleans up draft file
+Then review `.convosync/session-handoff-draft.md` and run `/convosync:save` when ready.
 
 **Output:**
 ```
@@ -354,11 +388,9 @@ Claude: I'll help you implement OAuth. Let me start by...
 [working together...]
 You: I need to catch my train. Let's save this.
 
-# Generate handoff
-You: /convosync:generate-handoff
-Claude: [Generates structured summary and saves to draft file]
-
-# Save to git
+# Save to git (auto-generates handoff)
+You: /convosync:save "OAuth halfway done, need refresh tokens"
+[No draft found - Claude generates handoff automatically]
 You: /convosync:save "OAuth halfway done, need refresh tokens"
 ✓ Handoff saved from device: desktop
 
@@ -383,7 +415,8 @@ You: There's a bug in the login redirect
 Claude: Let me fix that...
 [fix applied]
 
-You: /convosync:generate-handoff
+You: /convosync:save "fixed login redirect bug"
+[Claude generates handoff automatically]
 You: /convosync:save "fixed login redirect bug"
 ✓ Handoff saved
 
@@ -401,14 +434,18 @@ Claude: [Has full context of the bug fix from mobile]
 
 ```bash
 Desktop:
-  /convosync:generate-handoff
   /convosync:save "implemented core OAuth"
+  [Handoff auto-generated]
+  /convosync:save "implemented core OAuth"
+  ✓ Saved
 
 Mobile (later):
   /convosync:resume  ← Sees desktop's handoff
   [work on mobile]
-  /convosync:generate-handoff
   /convosync:save "added error handling"
+  [Handoff auto-generated]
+  /convosync:save "added error handling"
+  ✓ Saved
 
 Laptop (even later):
   /convosync:resume  ← Sees both desktop AND mobile handoffs

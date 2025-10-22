@@ -3,19 +3,21 @@
 Save current coding session with AI-generated handoff for cross-device sync.
 
 **What this does:**
-1. Reads the session handoff draft (created by /convosync:generate-handoff)
-2. Appends it to .convosync/session-handoff.md with metadata
-3. Commits code changes and handoff to git
-4. Pushes to remote repository
-
-**Prerequisites:**
-- Run `/convosync:generate-handoff` first to create the handoff draft
-- Claude should have saved the handoff to `.convosync/session-handoff-draft.md`
+1. Checks if handoff draft exists - if not, automatically prompts Claude to generate one
+2. Reads the session handoff draft
+3. Appends it to .convosync/session-handoff.md with metadata
+4. Commits code changes and handoff to git
+5. Pushes to remote repository
 
 **Usage:**
 ```
 /convosync:save "your commit message"
 ```
+
+**Notes:**
+- If no handoff draft exists, Claude will generate one automatically
+- You can also pre-generate a handoff using `/convosync:generate-handoff` to review it first
+- The handoff captures both code AND conversation context
 
 **Execute the save process:**
 
@@ -90,18 +92,56 @@ draft_file = Path('.convosync/session-handoff-draft.md')
 
 if not draft_file.exists():
     print("┌────────────────────────────────────────────────────────────────┐")
-    print("│ ❌ NO HANDOFF DRAFT FOUND                                      │")
+    print("│ ⚠️  NO HANDOFF DRAFT FOUND - GENERATING NOW                    │")
     print("└────────────────────────────────────────────────────────────────┘")
     print()
-    print("Please run /convosync:generate-handoff first to create a handoff.")
+    print("No handoff draft found. I'll generate one for you now.")
     print()
-    print("Steps:")
-    print("  1. Run: /convosync:generate-handoff")
-    print("  2. Ask Claude to generate the handoff")
-    print("  3. Claude will save it to .convosync/session-handoff-draft.md")
-    print("  4. Run: /convosync:save \"your message\"")
+    print("=" * 70)
+    print("SESSION HANDOFF GENERATION")
+    print("=" * 70)
     print()
-    sys.exit(1)
+    print("Please generate a comprehensive session handoff with these sections:")
+    print()
+    print("### Current Task")
+    print("Brief description of what we're currently working on.")
+    print()
+    print("### Progress So Far")
+    print("List of accomplishments:")
+    print("- ✅ Use checkmark for completed items")
+    print("- ⏳ Use hourglass for in-progress items")
+    print()
+    print("### Key Decisions Made")
+    print("Important technical or design decisions:")
+    print("- What was decided")
+    print("- Why it was decided that way")
+    print()
+    print("### Important Context")
+    print("Non-code context to preserve:")
+    print("- User preferences or facts mentioned")
+    print("- Constraints or requirements")
+    print("- Assumptions made")
+    print()
+    print("### Next Steps")
+    print("What should be done next:")
+    print("1. Specific next action")
+    print("2. Another action")
+    print()
+    print("### Files Modified")
+    print("List of changed files:")
+    print("- filename.ts (+50, -10) - description of changes")
+    print()
+    print("### Open Questions")
+    print("Unresolved questions or pending decisions")
+    print()
+    print("=" * 70)
+    print()
+    print("After generating the handoff above, save it to:")
+    print("  .convosync/session-handoff-draft.md")
+    print()
+    print("Then re-run: /convosync:save \"your message\"")
+    print()
+    sys.exit(0)
 
 handoff_content = draft_file.read_text().strip()
 print("✓ Found handoff draft")
@@ -217,13 +257,14 @@ SAVE_SCRIPT
 
 **What happens:**
 1. ✓ Detects or creates device ID
-2. ✓ Reads handoff draft created by generate-handoff
-3. ✓ Appends handoff to .convosync/session-handoff.md with metadata
-4. ✓ Commits code changes and handoff
-5. ✓ Pushes to remote repository
-6. ✓ Cleans up draft file
+2. ✓ Checks for handoff draft - generates one if missing
+3. ✓ Reads handoff draft
+4. ✓ Appends handoff to .convosync/session-handoff.md with metadata
+5. ✓ Commits code changes and handoff
+6. ✓ Pushes to remote repository
+7. ✓ Cleans up draft file
 
-**Example:**
+**Example (with existing handoff draft):**
 ```
 /convosync:save "implemented OAuth refresh tokens"
 
@@ -245,3 +286,32 @@ SAVE_SCRIPT
 ║ ✅ SESSION SAVED SUCCESSFULLY!                                     ║
 ╚════════════════════════════════════════════════════════════════════╝
 ```
+
+**Example (no handoff draft - auto-generates):**
+```
+/convosync:save "implemented OAuth"
+
+💾 ConvoSync: Saving session...
+
+→ Device: desktop
+
+┌────────────────────────────────────────────────────────────────┐
+│ ⚠️  NO HANDOFF DRAFT FOUND - GENERATING NOW                    │
+└────────────────────────────────────────────────────────────────┘
+
+No handoff draft found. I'll generate one for you now.
+
+======================================================================
+SESSION HANDOFF GENERATION
+======================================================================
+
+Please generate a comprehensive session handoff with these sections:
+[instructions displayed...]
+
+After generating the handoff above, save it to:
+  .convosync/session-handoff-draft.md
+
+Then re-run: /convosync:save "your message"
+```
+
+Then after Claude generates the handoff, running `/convosync:save` again will proceed with the commit.
