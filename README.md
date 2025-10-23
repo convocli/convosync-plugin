@@ -42,35 +42,37 @@ Everything syncs through git - no cloud storage setup needed.
 - Claude Code installed
 - Git repository
 
-### Install the Plugin
+### Install via Plugin Marketplace
 
-**Option 1: Clone and copy commands (recommended)**
+The easiest way to install ConvoSync:
 
 ```bash
-# Clone the repository
-git clone https://github.com/convocli/convosync-plugin
-cd convosync-plugin
+# Add the ConvoCLI marketplace
+/plugin marketplace add convocli/convosync-plugin
 
-# Copy commands to your project
-mkdir -p .claude/commands
-cp commands/*.md .claude/commands/
+# Install ConvoSync
+/plugin install convosync@convocli-marketplace
 ```
 
-**Option 2: Global installation**
+Or use the interactive browser:
 
 ```bash
-# Clone and copy to global commands directory
-git clone https://github.com/convocli/convosync-plugin
-mkdir -p ~/.claude/global-commands
-cp convosync-plugin/commands/*.md ~/.claude/global-commands/
-
-# In each project, create symlinks
-cd your-project
-mkdir -p .claude/commands
-ln -s ~/.claude/global-commands/*.md .claude/commands/
+/plugin
+# Navigate to "Browse plugins" → "convocli-marketplace" → "convosync" → "Install"
 ```
 
 That's it! The commands are now available in Claude Code.
+
+### Alternative: Manual Installation
+
+For plugin development or if you prefer manual installation:
+
+```bash
+git clone https://github.com/convocli/convosync-plugin
+cd convosync-plugin
+mkdir -p .claude/commands
+cp commands/*.md .claude/commands/
+```
 
 ---
 

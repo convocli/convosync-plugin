@@ -9,7 +9,7 @@
     {
       "name": "convosync",
       "source": "./",
-      "description": "Sync your coding sessions across devices with atomic code + conversation sync"
+      "description": "Sync your coding sessions across devices with AI-generated session handoffs"
     }
   ]
 }
